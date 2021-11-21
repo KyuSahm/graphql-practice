@@ -52,7 +52,8 @@ $git clone https://gitlab.com/yalco/yalco-inflearn-graphql-apollo.git
 - 1-2-rest-api 프로젝트 실행
 ```bash
 # nodemon 설치. 특정 프로젝트가 아닌 시스템에 설치
-# 소스 코드가 바뀌면, 다시 실행해줌
+# 소스 코드가 바뀌면, 다시 실행해줌.
+# 실행 시, node가 아니라, nodemon으로 실행하면 됨
 npm install -g nodemon
 #
 # 프로젝트 모듈 설치
@@ -213,10 +214,156 @@ Response Body:
     //...
   ]
 }
+```
+## GraphQL로 정보 주고 받아보기
+### 체험 프로젝트 실행
+- 1-3-graphql-exp 프로젝트 실행
+```bash
+# package.json과 package-lock.json을 토대로 프로젝트 모듈 설치
+$npm install
+# 프로젝트 실행 명령어 (해당 프로젝트 폴더에서)
+$nodemon index.js
+Server ready at http://localhost:4000/
+# 브라우저에서 localhost:4000 으로 확인
+```
+- Chrome 브라우저에서 ``localhost:4000``에 접속하면, apollo playground를 사용할 수 있음
+- 사용예 1: 브라우저에서 팀들에 대한 모든 정보 요청
+```bash
+# Write your query or mutation here
+query {
+  teams {
+    id
+    manager
+    office
+    extension_number
+    mascot
+    cleaning_duty
+    project
+  }
+}
+```
+- 사용예 2: 브라우저에서 팀들에 대한 ``manager``와 ``office`` 정보 요청
+  - **REST API의 Overfectching 이슈가 해결**
+```bash
+# Write your query or mutation here
+query {
+  teams {
+    manager
+    office
+  }
+}
+```
+- 사용예 3: 특정 팀의 정보만 요청
+```bash
+# Write your query or mutation here
+query {
+  team(id:2) {
+    id
+    manager
+    extension_number
+    mascot
+  }
+}
+```
+- 사용예 4: 팀 정보와 해당 팀 멤버들의 정보들 받아오기
+```bash
+# Write your query or mutation here
+query {
+  team(id: 1) {
+    manager
+    office
+    members {
+      first_name
+      last_name
+    }
+  }
+}
+```
+- 사용예 5: 팀 목록과 역할 목록 받아오기
+  - **Underfectching 이슈 해결**
+```bash
+# Write your query or mutation here
+query {
+  teams {
+    manager
+    office
+    mascot
+  }
+  roles {
+    id
+    requirement
+  }
+}
+```
+- 사용예 6: 새 팀 추가
+  - mutation 사용
+```bash
+mutation {
+  postTeam (input: {
+    manager: "John Smith"
+    office: "104B"
+    extension_number: "#9982"
+    mascot: "Dragon"
+    cleaning_duty: "Monday"
+    project: "Lordaeron"
+  }) {
+    manager
+    office
+    extension_number
+    mascot
+    cleaning_duty
+    project
+  }
+}
+```
+- 사용예 7: 특정 번호의 팀 정보 수정
+  - mutation 사용
+```bash
+mutation {
+  editTeam(id: 2, input: {
+    manager: "Maruchi Han"
+    office: "105A"
+    extension_number: "2315"
+    mascot: "Direwolf"
+    cleaning_duty: "Wednesday"
+    project: "Haemosu"
+  }) {
+    id,
+    manager,
+    office,
+    extension_number,
+    mascot,
+    cleaning_duty,
+    project
+  }
+}
+```
+- 사용예 8: 특정 번호의 팀 삭제
+  - mutation 사용
+```bash
+mutation {
+  deleteTeam(id: 3) {
+    id,
+    manager,
+    office,
+    extension_number,
+    mascot,
+    cleaning_duty,
+    project
+  }
+}
 ```  
-## GraphQL의 개념과 사용 방법
-### GraphQL이 탄생한 이유
 ### GraphQL의 특징과 강점
+- 필요한 정보들만 선택하여 받아올 수 있음
+  - Overfectching 문제 해결
+  - 데이터 전송량 감소
+- 여러 계층의 정보들을 한 번에 받아올 수 있음
+  - Underfetching 문제 해결
+  - 요청 횟수 감소  
+- 하나의 endpoint에서 모든 요청을 처리
+  - **하나의 URI에 POST로 모든 요청 가능**
+
+![graphql_post](./images/graphql_post.png)
 ### GraphQL로 정보를 주고받는 방법
 ## Apollo를 사용한 GraphQL 프로그래밍 실습
 ### Node.js 기반 프로젝트
