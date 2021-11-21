@@ -509,7 +509,226 @@ query {
   - 작성한 GraphQL type, resolver 명세 확인
   - 데이터 요청 및 전송 테스트
 ### Query 구현하기
-  
+- 지난 실습 그대로 진행 또는 ``2-2-server-query`` 열기
+#### Query 루트 타입
+- 자료 요청에 사용될 쿼리들을 정의
+- 쿼리 명령문마다 반환될 데이터 형태를 지정
+- 사용자가 쿼리 ``teams``를 요청할 경우, ``Team`` Type을 배열로 리턴
+```javascript
+type Query {
+    teams: [Team]
+}
+```
+#### Type 살펴 보기
+- 반환될 데이터의 형태를 지정
+- 자료형을 가진 필드들로 구성
+```javascript
+type Team {
+    id: Int
+    manager: String
+    office: String
+    extension_number: String
+    mascot: String
+    cleaning_duty: String
+    project: String
+}
+```
+#### Resolver 살펴보기
+- Query란 object의 항목들로 데이터를 반환하는 함수 선언
+  - 아래의 예제 코드는 화살표 함수 사용
+- 실제 프로젝트에서는 MySQL 조회 코드 등..
+```javascript
+
+const resolvers = {
+  Query: {
+    teams: () => database.teams
+  }
+}
+```
+#### equipments를 반환하는 쿼리 만들어 보기
+- ``dbtester.js`` 생성
+```javascript
+const database = require('./database')
+console.log(database.equipments)
+```
+- ``equipment``의 데이터 자료형
+  - ``index.js`` 파일에 추가
+```javascript
+type Equipment {
+    id: String
+    used_by: String
+    count: Int
+    new_or_used: String
+}
+```
+- Query Root에 ``equipment``를 반환하는 쿼리 추가
+```javascript
+type Query {
+    ...
+    equipments: [Equipment]
+}
+```
+- 데이터베이스에서 equipments를 추출하여 반환하는 resolver 추가
+```javascript
+Query: {
+    // ... 
+    equipments: () => database.equipments
+}
+```
+- Apollo playground에서 쿼리 요청해 보기
+```javascript
+query {
+    equipments {
+        id
+        used_by
+        count
+        new_or_used
+    }
+}
+```
+#### supplies 받아오기 추가
+- ``index.js``에 type 정의, 쿼리 추가, resolver 추가
+```javascript
+query {
+    ...
+    type Supply {
+        id: String
+        team: Int
+    }
+}
+```
+```javascript
+type Query {
+    ...
+    supplies: [Supply]
+}
+```
+```javascript
+type Query {
+    //...
+    supplies: () => database.supplies
+}
+```
+- Apollo playground에서 쿼리 요청해 보기
+```javascript
+query {
+  equipments {
+    id
+    used_by
+    count    
+  }
+
+  supplies {
+    id
+    team
+  }
+}
+```
+#### 특정 team만 받아오기
+- ``index.js``에 type 정의, 쿼리 추가, resolver 추가
+- args로 주어진 id에 해당하는 team만 필터링하여 반환
+```javascript
+type Query {
+    ...
+    team(id: Int): Team
+}
+```
+```javascript
+Query: {
+    //...
+    team: (parent, args, context, info) => database.teams
+        .filter((team) => {
+            return team.id === args.id
+        })[0],
+}
+```
+- Apollo Playground에서 쿼리 수행해 보기
+```javascript
+query {
+  team(id:1) {
+    id
+    manager
+    office
+    extension_number
+    mascot
+    cleaning_duty
+    project
+  }
+}
+```
+#### team에 supplies 연결해서 받아오기
+- Team 목록 또는 특정 Team을 반환시 해당하는 supplies를 ``supplies``항목에 추가
+- ``type Team``에 ``supplies`` 항목을 추가: 다수의 ``Supply``를 반환
+```javascript
+type Team {
+    id: Int
+    manager: String
+    office: String
+    extension_number: String
+    mascot: String
+    cleaning_duty: String
+    project: String
+    supplies: [Supply]
+}
+```
+- Team 목록 또는 특정 Team을 반환 시 해당하는 supplies를 ``supplies``항목에 추가
+```javascript
+const resolvers = {
+  Query: {
+    teams: () => database.teams.map((team) => {
+        team.supplies = database.supplies.filter((supply) => {
+            return supply.team === team.id
+        })
+        return team
+    }),
+    team: (parent, args, context, info) => database.teams.filter((team) => {
+             return team.id === args.id
+        }).map((team) => {
+            team.supplies = database.supplies.filter((supply) => {
+                return supply.team === team.id
+            })
+            return team            
+        })[0],
+    equipments: () => database.equipments,
+    supplies: () => database.supplies
+  }
+}
+```
+- Apollo Playground에서 쿼리 실행해 보기
+```javascript
+query {
+  team(id:2) {
+    id
+    manager
+    office
+    extension_number
+    mascot
+    cleaning_duty
+    project
+    supplies {
+      id
+      team
+    }
+  }
+}
+```
+```javascript
+query {
+  teams {
+    id
+    manager
+    office
+    extension_number
+    mascot
+    cleaning_duty
+    project
+    supplies {
+      id
+      team
+    }
+  }
+}
+```
 ### GraphQL로 정보를 주고받는 방법
 ## Apollo를 사용한 GraphQL 프로그래밍 실습
 ### Node.js 기반 프로젝트
