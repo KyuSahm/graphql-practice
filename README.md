@@ -508,6 +508,8 @@ query {
 - GraphQL Playground
   - 작성한 GraphQL type, resolver 명세 확인
   - 데이터 요청 및 전송 테스트
+### Query 구현하기
+  
 ### GraphQL로 정보를 주고받는 방법
 ## Apollo를 사용한 GraphQL 프로그래밍 실습
 ### Node.js 기반 프로젝트
