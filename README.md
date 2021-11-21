@@ -364,6 +364,27 @@ mutation {
   - **하나의 URI에 POST로 모든 요청 가능**
 
 ![graphql_post](./images/graphql_post.png)
+## Apollo의 역할
+- GraphQL로 서비스를 만들려면?
+  - **GraphQL은 명세, 형식일 뿐**
+- GraphQL 구현한 프레임워크의 역할과 종류
+  - 백엔드에서 정보를 제공 및 처리
+  - 프런트엔드에서 요청 전송
+  - 백엔드 프레임워크: Apollo Server, [GrapQL.js](https://www.npmjs.com/package/graphql), [GraphQL Yoga](https://github.com/dotansimha/graphql-yoga)
+  - 프런트엔드 프레임워크: Apollo Client, [AWS Amplify](https://docs.amplify.aws/), [Relay](https://relay.dev/)...
+  - [프레임워크 전체 살펴보기- https://graphql.org/code/](https://graphql.org/code/)
+- Apollo GraphQL을 사용한 이유
+  - [사이트-https://www.apollographql.com/](https://www.apollographql.com/)
+  - **백엔드와 프런트엔드 모두 제공**
+  - 간편하고 쉬운 설정
+  - 풍성한 기능을 제공
+  - Apollo Client로 React, Vue, angular 모두 제공
+  - 해당 사이트에서 Apollo Turitorial을 읽으면 도움
+- 이 강의에서 만들어 볼 것
+  - Apollo Server를 활용한 백엔드 서버 제작
+    - [사이트-https://www.apollographql.com/docs/apollo-server/](https://www.apollographql.com/docs/apollo-server/)
+  - Apollo Client와 React를 활용한 프런트엔드 웹 제작
+    - [사이트-https://www.apollographql.com/docs/react/](https://www.apollographql.com/docs/react/)  
 ### GraphQL로 정보를 주고받는 방법
 ## Apollo를 사용한 GraphQL 프로그래밍 실습
 ### Node.js 기반 프로젝트
