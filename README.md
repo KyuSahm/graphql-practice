@@ -384,7 +384,130 @@ mutation {
   - Apollo Server를 활용한 백엔드 서버 제작
     - [사이트-https://www.apollographql.com/docs/apollo-server/](https://www.apollographql.com/docs/apollo-server/)
   - Apollo Client와 React를 활용한 프런트엔드 웹 제작
-    - [사이트-https://www.apollographql.com/docs/react/](https://www.apollographql.com/docs/react/)  
+    - [사이트-https://www.apollographql.com/docs/react/](https://www.apollographql.com/docs/react/)
+## GraphQL 서버 만들어 보기
+### Apollo 서버 구축 하기
+#### 프로젝트 시작하기
+- GraphQL을 사용하는 백엔드 서버
+##### 프로젝트 생성
+- ``chap-2-lession-1`` 폴더 생성
+- 프로젝트 폴더 생성 뒤 VS Code에서 열기
+- ``Ctrl + shift + ` ``로 터미널 창 열기
+- Node.js 프로젝트 생성
+  - ``package.json`` 파일 생성
+```bash
+#$ npm init --help
+#npm init
+#Create a package.json file
+$npm init
+```
+- index.js 파일 생성
+```javascript
+console.log('프로젝트 생성 완료')
+// 터미널에 nodemon index.js로 테스트
+```
+- ``package.json - "scripts" 항목에 실행 명령 추가 
+```javascript
+....
+"scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon index.js"
+  }
+....  
+```
+- 실행명령 테스트
+  - ``node`` 명령어로 직접 실행하는 방법
+  - ``nodedemon`` 명령어로 직접 실행하는 방법(daemon형태로 실행)
+    - 바뀐 소스코드가 변경할 때 마다 다시 실행됨
+  - ``npm`` 명령어로 ``package.json``을 통해서 실행하는 방법
+```bash
+$ node index.js
+```
+```bash
+$ nodemon index.js
+```
+```bash
+$npm start
+```
+##### Mock 데이터베이스 모듈 삽입
+- Yaco님의 ``2-1-graphql-api-setup`` 폴더 안 내용들을 프로젝트로 이동
+- index.js
+```javascript
+const database = require('./database')
+console.log(database)
+```
+- 필요 모듈 설치 뒤 테스트
+```bash
+# i means install
+$npm i convert-csv-to-json
+$npm start
+```
+- VS Code에 Edit csv 확장설치(선택)
+##### Apollo 서버 설치
+- 필요 모듈 설치 뒤 테스트
+  - 설치 시, ``package.json``과 ``package-lock.json``의 ``dependency``가 자동 변경
+```bash
+$npm i graphql apollo-server
+```
+- Apollo 서버 실행
+  - index.js에 붙여 넣기
+  - 서버 실행
+```javascript
+// index.js
+const database = require('./database')
+const { ApolloServer, gql } = require('apollo-server')
+const typeDefs = gql`
+  type Query {
+    teams: [Team]
+  }
+  type Team {
+    id: Int
+    manager: String
+    office: String
+    extension_number: String
+    mascot: String
+    cleaning_duty: String
+    project: String
+  }
+`
+const resolvers = {
+  Query: {
+    teams: () => database.teams
+  }
+}
+const server = new ApolloServer({ typeDefs, resolvers })
+server.listen().then(({ url }) => {
+console.log(`🚀  Server ready at ${url}`)
+})
+```
+```bash
+$npm start
+```
+- 쿼리 테스트
+  - apollo playground에서 해당 포트에 접
+```GraphQL
+query {
+  teams {
+    id
+    manager
+    office
+    extension_number
+    mascot
+    cleaning_duty
+    project
+  }
+}
+```
+#### index.js내의 코드 설명
+- typeDef
+  - GraphQL 명세에서 사용될 데이터, 요청의 타입 지정
+  - gql([template literal tag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#tagged_templates))로 생성됨
+- resolver
+  - 서비스의 액션들을 함수로 지정
+  - 요청에 따라 데이터를 반환, 입력, 수정, 삭제를 처리
+- GraphQL Playground
+  - 작성한 GraphQL type, resolver 명세 확인
+  - 데이터 요청 및 전송 테스트
 ### GraphQL로 정보를 주고받는 방법
 ## Apollo를 사용한 GraphQL 프로그래밍 실습
 ### Node.js 기반 프로젝트
