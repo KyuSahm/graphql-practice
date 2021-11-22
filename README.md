@@ -1010,7 +1010,220 @@ mutation {
     team
   }
 }
-```         
+```
+### GraphQL의 기본 타입들
+- 지난 실습 그대로 진행 또는 3-2 types 열기
+#### 스칼라 타입
+- GraphQL 내장 자료형
+
+| 타입      | 설명 |
+| --------- | ----------- |
+| ID        | 기본적으로는 String이나, 고유 식별자 역할임을 나타내는 일종의 약속|
+| String    | UTF-8 문자열|
+| Int       | 부호가 있는 32비트 정수|
+| Float     | 부호가 있는 부동소수점 값|
+| Boolean   | 참/거짓|	
+
+- ``!`` : Non Null
+  - null을 반환할 수 없음
+  - 만약, null을 반환하면 graphQL 서버에서 에러가 발생
+- ``equipments.js``에 새로운 타입과 resolver를 정의  
+```javascript
+type EquipmentAdv {
+    id: ID!
+    used_by: String!
+    count: Int!
+    use_rate: Float
+    is_new: Boolean!
+}
+```
+```javascript
+const resolvers = {
+    Query: {
+        // ...
+        equipmentAdvs: (parent, args) => dbWorks.getEquipments(args)
+            .map((equipment) => {
+                if (equipment.used_by === 'developer') {
+                    equipment.use_rate = Math.random().toFixed(2)
+                }
+                equipment.is_new = equipment.new_or_used === 'new'
+                return equipment
+            }),
+    },
+    // ...
+}
+```
+- ``_queries.js``에 새로운 Query 추가
+```javascript
+type Query {
+    ...
+    equipmentAdvs: [EquipmentAdv]
+    ...
+}
+```
+- Apollo Playground에서 Query 수행
+```javascript
+query {
+    equipmentAdvs {
+        id
+        used_by
+        count
+        use_rate
+        is_new
+    }
+}
+```
+#### 열거 타입
+- 미리 지정된 값들 중에서만 반환
+- ``_enums.js``
+```javascript
+const { gql } = require('apollo-server')
+const typeDefs = gql`
+    enum Role {
+        developer
+        designer
+        planner
+    }
+    enum NewOrUsed {
+        new
+        used
+    }
+`
+module.exports = typeDefs
+```
+- ``index.js``
+```javascript
+// ...
+const enums = require('./typedefs-resolvers/_enums')
+// ...
+const typeDefs = [
+    // ...
+    enums,
+    // ...
+]
+```
+- ``equipments.js``
+```javascript
+const typeDefs = gql`
+    type Equipment {
+        id: ID!
+        used_by: Role!
+        count: Int!
+        new_or_used: NewOrUsed!
+    }
+    type EquipmentAdv {
+        id: ID!
+        used_by: Role!
+        count: Int!
+        use_rate: Float
+        is_new: Boolean!
+    }
+`
+```
+- Apollo Playground를 이용하여 Query 수행
+```javascript
+query {
+  equipments {
+    id
+    used_by
+    count
+    new_or_used
+  }
+	equipmentAdvs {
+    id
+    used_by
+    count
+    use_rate
+    is_new
+  }
+}
+```
+#### 리스트 타입
+- 특정 타입의 배열을 반환
+- ``equipments.js``의 ``users`` 항목
+```javascript
+const typeDefs = gql`
+    // ...
+    type EquipmentAdv {
+        id: ID!
+        used_by: Role!
+        count: Int!
+        use_rate: Float
+        is_new: Boolean!,
+        users: [String!]
+    }
+`
+// ...
+const resolvers = {
+    Query: {
+        // ...
+        equipmentAdvs: (parent, args) => dbWorks.getEquipments(args)
+            .map((equipment) => {
+                if (equipment.used_by === 'developer') {
+                    equipment.use_rate = Math.random().toFixed(2)
+                }
+                equipment.is_new = equipment.new_or_used === 'new'
+                if (Math.random() > 0.5) {
+                    equipment.users = []
+                    dbWorks.getPeople(args).forEach((person) => {
+                        if (person.role === equipment.used_by && Math.random() < 0.2) {
+                            equipment.users.push(person.last_name)
+                        }
+                    })
+                }
+                return equipment
+            }),
+    },
+    // ...
+}
+```
+- Apollo Playground를 이용하여 Query 수행
+```javascript
+query {
+  equipmentAdvs {
+    id
+    used_by
+    count
+    use_rate
+    is_new
+    users
+  }
+}
+```
+| 선언부   | users: null | users: [ ] | users: [..., null] |
+| --------- | ----------- | ----------- | ----------- |
+|[String]	 |  ✔          |	✔          |	✔          |
+|[String!] |	✔          |	✔	         |  ❌         |
+|[String]! |	❌         |	 ✔          |  ✔          |
+|[String!]!|	❌         |  ✔          |	 ❌         |
+
+#### 객체 타입
+- 사용자에 의해 정의된 타입들
+  - 아래 파일의 ``Team, Equipment, Supply``가 객체 타입
+```javascript
+const typeDefs = gql`
+  type Team {
+    id: Int
+    manager: String
+    office: String
+    extension_number: String
+    mascot: String
+    cleaning_duty: String
+    project: String
+    supplies: [Supply]
+  }
+  type Equipment {
+      id: String
+      used_by: String
+      count: Int
+      new_or_used: String
+  }
+  type Supply {
+      id: String
+      team: Int
+  }
+`
+```
 ### GraphQL로 정보를 주고받는 방법
 ## Apollo를 사용한 GraphQL 프로그래밍 실습
 ### Node.js 기반 프로젝트
