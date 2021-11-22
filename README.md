@@ -854,7 +854,163 @@ mutation {
   }
 }
 ```
+## GraphQL 서버 깊이 파보기
+### 서버 구성요소 모듈화
+- 3-1-server-modularized 열기
+#### apollo-server 생성자 인자 모듈화
+- [apollo-server](https://www.apollographql.com/docs/apollo-server/api/apollo-server/) 문서 참조
+  - ``typeDefs``: 단일 변수 또는 배열로 지정 가능
+  - ``resolvers``: 단일 Object 또는 Merge 된 배열로 가능
+- ``typeDefs``와 ``resolvers``들을 별도의 파일들에 분리 시킴
+- ``typedefs-resolvers/equipments.js``
+  - ``type Equipment``의 정의와 resolvers의 구현이 존재
+```javascript
+// ...
+const typeDefs = gql`
+    type Equipment {
+        id: String
+        used_by: String
+        count: Int
+        new_or_used: String
+    }
+`
+const resolvers = {
+    Query: {
+        equipments: (parent, args) => dbWorks.getEquipments(args),
+    },
+    Mutation: {
+        deleteEquipment: (parent, args) => dbWorks.deleteItem('equipments', args),
+    }
+}
+// ...
+```  
+- ``typedefs-resolvers/_queries.js``
+  - Query에 대한 정의가 존재
+```javascript
+// ...
+const typeDefs = gql`
+    type Query {
+        equipments: [Equipment]
+    }
+`
+// ...
+```
+- ``typedefs-resolvers/_mutations.js``
+  - Mutation에 대한 정의가 존재  
+```javascript
+// ...
+const typeDefs = gql`
+    type Mutation {
+      deleteEquipment(id: String): Equipment
+    }
+`
+// ...
+```
+- package.json에 포함된 package들과 의존성 Package들을 설치
+```bash
+$ npm install
+```
+- 서버 시작
+```bash
+$ npm start
+```
+- Apollo Playground를 이용해서 GraphQL 수행
+```javascript
+query {
+  equipments {
+    id
+    new_or_used
+    used_by
+    count    
+  }
+}
+```
+#### ``dbWorks.js`` 살펴보기
+- Resolver에 사용할 기능들을 모듈화
+#### ``Supply`` 모듈 추가해 보기
+- ``typedefs-resolvers/supplies.js``
+  - ``type Supply``의 정의와 resolvers의 구현이 존재
+```javascript
+const { gql } = require('apollo-server')
+const dbWorks = require('../dbWorks')
 
+const typeDefs = gql`
+    type Supply {
+        id: String
+        team: Int
+    }
+`
+const resolvers = {
+    Query: {
+        supplies: (parent, args) => dbWorks.getSupplies(args)
+    },
+    Mutation: {
+        deleteSupply: (parent, args) => dbWorks.deleteItem('supplies', args),
+    }
+}
+
+module.exports = {
+    typeDefs: typeDefs,
+    resolvers: resolvers
+}
+```  
+- ``typedefs-resolvers/_queries.js``
+  - Query에 대한 정의가 존재
+```javascript
+// ...
+const typeDefs = gql`
+    type Query {
+        ...
+        supplies: [Supply]
+    }
+`
+// ...
+```
+- ``typedefs-resolvers/_mutations.js``
+  - Mutation에 대한 정의가 존재
+```javascript
+// ...
+const typeDefs = gql`
+    type Mutation {
+        ...
+        deleteSupply(id: Stgring): Supply
+    }
+`
+// ...
+```
+- ``typedefs-resolvers/index.js``
+  - Supply를 위한 ``Query, Mutation, type Supply정의``를 추가
+```javascript
+// ...
+const supplies = require('./typedefs-resolvers/supplies')
+// ...
+const typeDefs = [
+    // ...
+    supplies.typeDefs
+]
+const resolvers = [
+    // ...
+    supplies.resolvers
+]
+// ...
+```
+- Apollo playground에서 Query와 Mutation 수행해 보기
+```javascript
+query {
+  supplies {
+    id
+    team
+  }
+}
+```
+```javascript
+mutation {
+  deleteSupply(id: "mug") {
+    id
+    team
+  }
+}
+```         
 ### GraphQL로 정보를 주고받는 방법
 ## Apollo를 사용한 GraphQL 프로그래밍 실습
 ### Node.js 기반 프로젝트
