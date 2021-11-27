@@ -9,7 +9,10 @@ const dataFiltered = (which, args) => {
                 ['page', 'per_page'].includes(b) ||
                 item[b] == args[b]
             )
-        }, true)
+        }, true) // reduce 함수의 초기값이 true,
+        // 예를 들면, return true && (people['team'] == args['team']) 
+        //            return true && (people['team'] == args['team']) && (people['blood_type'] == args['blood_type'])
+        // args에 명시된 키값을 가지고 reduce 함수를 통해 && 조건을 여러번 수행해서 결과 값이 true인 것만 filter 함수를 통해 필터링 
     })
 
     // 페이징

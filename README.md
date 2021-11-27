@@ -1533,10 +1533,281 @@ query {
   }
 }
 ```
-
-
-### GraphQL로 정보를 주고받는 방법
-## Apollo를 사용한 GraphQL 프로그래밍 실습
-### Node.js 기반 프로젝트
-### 백엔드 서버 만들기
-### 프론트엔드 웹사이트 만들기
+### Argument와 Input Type
+- 지난 실습 그대로 진행 또는 3-4-arg-input-type 열기
+#### People 데이터 조건들로 필터 넣어 받아오기
+- ``_queries.js``
+```javascript
+    type Query {
+        ...
+        peopleFiltered(
+            team: Int, 
+            sex: Sex, 
+            blood_type: BloodType, 
+            from: String
+        ): [People]
+        ...
+    }
+```
+- ``people.js``
+```javascript
+  Query: {
+    // ...
+    peopleFiltered: (parent, args) => dbWorks.getPeople(args),
+  }
+```
+- 필터링에 관련된 로직은 이미 ``dbWorks.js``파일의 ``dataFiltered`` 변수에 존재
+- ``Apollo Playground``에서 아래의 query 수행
+```javascript
+query {
+  peopleFiltered (
+    team: 1
+    blood_type: B
+    from: "Texas"
+  ) {
+    id
+    first_name
+    last_name
+    sex
+    blood_type
+    serve_years
+    role
+    team
+    from
+  }
+}
+```
+- 주의 사항으로, ``Apollo Playground`` query를 생성할 때, enum type에 대해서는 ``""``를 사요하지 않음
+```javascript
+query {
+  peopleFiltered (
+    sex: female
+    from: "California"
+  ) {
+    id
+    first_name
+    last_name
+    sex
+    blood_type
+    serve_years
+    role
+    team
+    from
+  }
+}
+```
+#### 페이지로 나누어 받아오기
+- ``_queries.js``
+```javascript
+    type Query {
+        ...
+        peoplePaginated(
+            page: Int!,
+            per_page: Int!
+        ): [People]
+        ...
+    }
+```
+- ``people.js``
+```javascript
+    Query: {
+        // ...
+        peoplePaginated: (parent, args) => dbWorks.getPeople(args),
+        // ...
+    }
+```
+- page와 관련된 로직은 이미 ``dbWorks.js``파일의 ``dataFiltered`` 변수에 존재
+- ``Apollo Playground`` query 수행
+```javascript
+query {
+	peoplePaginated(page: 1, per_page: 7) {
+    id
+    first_name
+    last_name
+    sex
+    blood_type
+    serve_years
+    role
+    team
+    from
+  }
+}
+```
+- 아래와 같이 ``_queries.js``를 수정하여 필터링과 페이징을 함께 할 수도 있음
+```javascript
+query {
+        peopleFiltered(
+            team: Int, 
+            sex: Sex, 
+            blood_type: BloodType, 
+            from: String,
+            page: Int!,
+            per_page: Int!
+        ): [People]
+}
+```
+- ``team``이 2인 People을 페이징 처리하는 ``Apollo Playground`` query
+```javascript
+query {
+	peoplePaginated(team: 2, page: 2, per_page: 7) {
+    id
+    first_name
+    last_name
+    sex
+    blood_type
+    serve_years
+    role
+    team
+    from
+  }
+}
+```
+#### 별칭으로 받아오기
+- 결과 데이터에 별칭을 붙여서 가져오는 ``Apollo Playground`` query 수행 방법
+```javascript
+query {
+	badGuys:peopleFiltered(blood_type:B, sex:male) {
+    id
+    first_name
+    last_name
+    sex
+    blood_type
+    serve_years
+    role
+    team
+    from
+  }
+  newYorkers:peopleFiltered(from:"New York") {
+    id
+    first_name
+    last_name
+    sex
+    blood_type
+    serve_years
+    role
+    team
+    from
+  }
+}
+```
+- 아래와 같이 결과 데이터가 반환
+```javascript
+{
+  "data": {
+    "badGuys": [
+      {
+        "id": "3",
+        "first_name": "Nathan",
+        "last_name": "Jenkins",
+        "sex": "male",
+        "blood_type": "B",
+        "serve_years": 1,
+        "role": "planner",
+        "team": "1",
+        "from": "Texas"
+      },
+      {
+        "id": "25",
+        "first_name": "Brian",
+        "last_name": "Hunt",
+        "sex": "male",
+        "blood_type": "B",
+        "serve_years": 2,
+        "role": "planner",
+        "team": "1",
+        "from": "Indiana"
+      }
+    ],
+    "newYorkers": [
+      {
+        "id": "16",
+        "first_name": "Toby",
+        "last_name": "Lewis",
+        "sex": "male",
+        "blood_type": "A",
+        "serve_years": 1,
+        "role": "planner",
+        "team": "3",
+        "from": "New York"
+      },
+      {
+        "id": "36",
+        "first_name": "Chloe",
+        "last_name": "Bailey",
+        "sex": "female",
+        "blood_type": "A",
+        "serve_years": 5,
+        "role": "developer",
+        "team": "4",
+        "from": "New York"
+      },
+      {
+        "id": "42",
+        "first_name": "Russ",
+        "last_name": "Lawrence",
+        "sex": "male",
+        "blood_type": "O",
+        "serve_years": 5,
+        "role": "designer",
+        "team": "1",
+        "from": "New York"
+      }
+    ]
+  }
+}
+```
+#### Input Type
+- query 또는 mutation의 입력 인자의 개수가 너무 많은 경우, 구조화 시켜서 사용
+- ``people.js``
+```javascript
+const typeDefs = gql`
+    ....
+    input PostPersonInput {
+        first_name: String!
+        last_name: String!
+        sex: Sex!
+        blood_type: BloodType!
+        serve_years: Int!
+        role: Role!
+        team: ID!
+        from: String!
+    }
+`
+const resolvers = {
+    // ...
+    Mutation: {
+        postPerson: (parent, args) => dbWorks.postPerson(args),
+    }
+}
+```
+- ``_mutation.js``
+```javascript
+type Mutation {
+    postPerson(input: PostPersonInput): People!
+    ...
+}
+```
+- ``Apollo Playground``에서 query 수행
+```javascript
+mutation {
+  postPerson(input: {
+    first_name: "Hanna"
+    last_name: "Kim"
+    sex: female
+    blood_type: O
+    serve_years: 3
+    role: developer
+    team: 1
+    from: "Pusan"
+  }) {
+    id
+    first_name
+    last_name
+    sex
+    blood_type
+    role
+    team
+    from
+  }
+}
+```
