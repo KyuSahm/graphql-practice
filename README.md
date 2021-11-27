@@ -1811,3 +1811,602 @@ mutation {
   }
 }
 ```
+## GraphQL 클라이언트 만들어 보기
+### React와 Apollo Client
+- SPA와 React의 개념
+  - [참고 영상](https://youtu.be/iE29lbjbow0)
+### Chapter 4 실습
+- ⭐1-3-graphql-exp 폴더에서 **서버 실행하기**
+```bash
+$npm start
+> 1-3-graphql-exp@1.0.0 start
+> nodemon index.js
+
+[nodemon] 2.0.15
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): *.*
+[nodemon] watching extensions: js,mjs,json
+[nodemon] starting `node index.js`
+🚀  Server ready at http://localhost:4000
+```
+- 4-1-react-before-apollo 폴더 열기
+- React 모듈 설치
+```bash
+$npm install -g react-scripts
+```
+- 필요한 패키지 install
+```bash
+$npm install
+```
+- React Client 실행
+  - 3000번 포트로 실행
+```bash
+$npm start
+```
+![React_Client.png](./images/React_Client.png)
+#### 코드 살펴 보기
+- ``App.js``
+
+| 코드  | 설명 |
+| --------- | ----------- |
+| NavMenus  | menu값에 따라 상단 App-header의 버튼을 표시하는 함수|
+| mainComp  | App-header 아래 메인 화면에 나타날 컴포넌트 매핑|
+
+- ``roles.js, teams.js, people.js``
+
+| 코드  | 설명 | 비고 |
+| --------- | ----------- | ----------- |
+| AsideItems |	메인화면 왼쪽의 사이드 섹션 |	리스트가 나타날 곳 |
+| MainContents |	메인화면 | 리스트 각 항목의 내용부가 표시될 곳 | 	
+
+#### Apollo Client 사용하기
+- [아폴로 클라이언트 문서](https://www.apollographql.com/docs/react/get-started/)
+- 아폴로 클라이언트 모듈 적용
+```bash
+$npm install @apollo/client graphql
+```
+- App.js
+```javascript
+// ...
+import { ApolloProvider } from '@apollo/client';
+import { ApolloClient, InMemoryCache } from '@apollo/client'
+// ...
+```
+- ApolloClient 모듈 임포트
+  - App.js
+```javascript
+// ...
+const client = new ApolloClient({
+  uri: 'http://localhost:4000',
+  cache: new InMemoryCache()
+});
+// ...
+```  
+| 코드  | 설명 |
+| --------- | ----------- |
+| client | GraphQL 서버로와 정보를 주고받을 ApolloClient 객체 |
+| uri |	GraphQL 서버의 주소 | 	
+| cache |	InMemoryCache를 통한 캐시 관리 |
+- ``App.js``의 return 구문에서 내부 요소들을 ApolloProvider 로 감싸준다.
+```javascript
+//   ...
+  return (
+    <div className="App">
+      <ApolloProvider client={client}>
+        <header className="App-header">
+          <h1>Company Management</h1>
+          <nav>
+            <ul>
+              {NavMenus()}
+            </ul>
+          </nav>
+        </header>
+        <main>
+          {mainComp[menu]}
+        </main>
+      </ApolloProvider>
+    </div>
+  );
+//   ...
+```
+##### GraphQL 서버로부터 목록 받아와 표시하기
+- ``roles.js``
+  - 필요한 모듈들 임포트
+  - 쿼리 작성
+  - 렌더링될 컨텐츠 id를 저장할 state 지정
+  - AsideItems 함수에서, GraphQL로부터 데이터를 받아와 목록을 렌더링하도록 작성
+```javascript
+// ...
+import { useState } from 'react';
+import { useQuery, gql } from '@apollo/client';
+// ...
+// ...
+const GET_ROLES = gql`
+  query GetRoles {
+    roles {
+      id
+    }
+  }
+`;
+// ...
+// ...
+  const [contentId, setContentId] = useState('');
+// ...
+// ...
+  function AsideItems () {
+    const roleIcons = {
+      developer: '💻',
+      designer: '🎨',
+      planner: '📝'
+    }
+    const { loading, error, data } = useQuery(GET_ROLES);
+    if (loading) return <p className="loading">Loading...</p>
+    if (error) return <p className="error">Error :(</p>
+    return (
+      <ul>
+        {data.roles.map(({id}) => {
+          return (
+            <li key={id} className={'roleItem ' +  (contentId === 'id' ? 'on' : '')}
+            onClick={() => {setContentId(id)}}>
+              <span>{contentId === id ? '🔲' : '⬛'}</span>
+              {roleIcons[id]} {id}
+            </li>
+          )
+        })}
+      </ul>
+    );
+  }
+// ...
+```
+
+| 코드  | 설명 |
+| --------- | ----------- |
+| loading | GraphQL 서버에서 정보를 받아오는 동안 표시 |
+| error | 요청에 오류가 발생할 시 반환 |
+| data | GraphQL 요청대로 받아진 정보 |
+
+##### GraphQL 서버로부터 id로 컨텐츠 받아와 표시하기
+- ``roles.js``
+  - query 작성
+  - ``MainContents()`` 함수 수정
+
+```javascript
+// ...
+const GET_ROLE = gql`
+  query GetRole($id: ID!) {
+    role(id: $id) {
+      id
+      requirement
+      members {
+        id
+        last_name
+        serve_years
+      }
+      equipments {
+        id
+      }
+      softwares {
+        id
+      }
+    }
+  }
+`;
+// ...
+  function MainContents() {
+
+    const { loading, error, data } = useQuery(GET_ROLE, {
+      variables: {id: contentId}
+    })
+
+    if (loading) return <p className="loading">Loading...</p>
+    if (error) return <p className="error">Error :(</p>
+    if (contentId === '') return (<div className="roleWrapper">Select Role</div>)
+
+    return (
+      <div className="roleWrapper">
+        <h2>{data.role.id}</h2>
+        <div className="requirement"><span>{data.role.requirement}</span> required</div>
+        <h3>Members</h3>
+        <ul>
+          {data.role.members.map((member) => {
+            return (<li>{member.last_name}</li>)
+          })}
+        </ul>
+        <h3>Equipments</h3>
+        <ul>
+          {data.role.equipments.map((equipment) => {
+            return (<li>{equipment.id}</li>)
+          })}
+        </ul>
+        <h3>Softwares</h3>
+          {data.role.softwares.map((software) => {
+            return (<li>{software.id}</li>)
+          })}
+        <ul>
+        </ul>
+      </div>
+    );
+  }
+```
+##### Query와 Mutation을 사용하여 웹페이지 만들기
+- ``teams.js``
+  - 모듈 로드
+  - State 준비
+```javascript
+// ...
+import { useState } from 'react';
+import { useQuery, useMutation, gql } from '@apollo/client'
+// ...
+// ...
+  const [contentId, setContentId] = useState(0)
+  const [inputs, setInputs] = useState({
+    manager: '',
+    office: '',
+    extension_number: '',
+    mascot: '',
+    cleaning_duty: '',
+    project: ''
+  })
+// ...
+```
+###### 팀목록 받아오기 
+- 쿼리 작성: ``teams.js``
+```javascript
+// ...
+const GET_TEAMS = gql`
+  query GetTeams {
+    teams {
+        id
+        manager
+        members {
+          id
+          first_name
+          last_name
+          role
+        }
+      }
+  }
+`;
+// ...
+```
+- 팀 목록을 받아와 보여주기 함수: ``teams.js``
+```javascript
+// ...
+  function AsideItems () {
+    const roleIcons = {
+      developer: '💻',
+      designer: '🎨',
+      planner: '📝'
+    }
+
+    const { loading, error, data, refetch } = useQuery(GET_TEAMS);
+
+    if (loading) return <p className="loading">Loading...</p>
+    if (error) return <p className="error">Error :(</p>
+
+    return (
+      <ul>
+        {data.teams.map(({id, manager, members}) => {
+          return (
+            <li key={id}>
+              <span className="teamItemTitle" onClick={() => {setContentId(id)}}>
+                Team {id} : {manager}'s
+              </span>
+              <ul className="teamMembers">
+                {members.map(({id, first_name, last_name, role}) => {
+                  return (
+                    <li key={id}>
+                      {roleIcons[role]} {first_name} {last_name}
+                    </li>
+                  )
+                })}
+              </ul>
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
+// ...
+```
+###### 팀 항목 받아오기
+- 쿼리 작성: ``teams.js``
+```javascript
+// ...
+const GET_TEAM = gql`
+  query GetTeam($id: ID!) {
+    team(id: $id) {
+        id
+        manager
+        office
+        extension_number
+        mascot
+        cleaning_duty
+        project
+      }
+  }
+`;
+// ...
+```
+- 항목 받아와 보여주기 함수: ``teams.js``
+```javascript
+// ...
+function MainContents () {
+
+    const { loading, error } = useQuery(GET_TEAM, {
+      variables: {id: contentId},
+      onCompleted: (data) => {
+        if (contentId === 0) {
+          setInputs({
+            manager: '',
+            office: '',
+            extension_number: '',
+            mascot: '',
+            cleaning_duty: '',
+            project: ''
+          })
+        } else {
+          setInputs({
+            manager: data.team.manager,
+            office: data.team.office,
+            extension_number: data.team.extension_number,
+            mascot: data.team.mascot,
+            cleaning_duty: data.team.cleaning_duty,
+            project: data.team.project
+          })
+        }
+      }
+    });
+
+    if (loading) return <p className="loading">Loading...</p>
+    if (error) return <p className="error">Error :(</p>
+
+    function handleChange(e) {
+      const { name, value } = e.target
+      setInputs({
+        ...inputs,
+        [name]: value
+      })
+    }
+
+    return (
+      <div className="inputContainer">
+        <table>
+          <tbody>
+            {contentId !== 0 && (
+              <tr>
+                <td>Id</td>
+                <td>{contentId}</td>
+              </tr>
+            )}
+            <tr>
+              <td>Manager</td>
+              <td><input type="text" name="manager" value={inputs.manager} onChange={handleChange}/></td>
+            </tr>
+            <tr>
+              <td>Office</td>
+              <td><input type="text" name="office" value={inputs.office} onChange={handleChange}/></td>
+            </tr>
+            <tr>
+              <td>Extension Number</td>
+              <td><input type="text" name="extension_number" value={inputs.extension_number} onChange={handleChange}/></td>
+            </tr>
+            <tr>
+              <td>Mascot</td>
+              <td><input type="text" name="mascot" value={inputs.mascot} onChange={handleChange}/></td>
+            </tr>
+            <tr>
+              <td>Cleaning Duty</td>
+              <td><input type="text" name="cleaning_duty" value={inputs.cleaning_duty} onChange={handleChange}/></td>
+            </tr>
+            <tr>
+              <td>Project</td>
+              <td><input type="text" name="project" value={inputs.project} onChange={handleChange}/></td>
+            </tr>
+          </tbody>
+        </table>
+        {contentId === 0 ? 
+          (<div className="buttons">
+            <button onClick={() => {}}>Submit</button>
+          </div>
+          ) : (
+          <div className="buttons">
+            <button onClick={() => {}}>Modify</button>
+            <button onClick={() => {}}>Delete</button>
+            <button onClick={() => {setContentId(0)}}>New</button>
+          </div>
+          )}
+      </div>
+    )
+  }
+//   ...
+```
+###### 항목 삭제하기
+- 쿼리와 함수 작성: ``teams.js``
+```javascript
+// ...
+const DELETE_TEAM = gql`
+  mutation DeleteTeam($id: ID!) {
+    deleteTeam(id: $id) {
+      id
+    }
+  }
+`
+// ...
+  function execDeleteTeam () {
+    if (window.confirm('이 항목을 삭제하시겠습니까?')) {
+      deleteTeam({variables: {id: contentId}})
+    }
+  }
+  const [deleteTeam] = useMutation(
+  DELETE_TEAM, { onCompleted: deleteTeamCompleted })
+  function deleteTeamCompleted (data) {
+    console.log(data.deleteTeam)
+    alert(`${data.deleteTeam.id} 항목이 삭제되었습니다.`)
+    setContentId(0)
+  }
+    // ...
+```
+- 버튼에 적용: ``teams.js``
+```javascript
+// ...
+    <button onClick={execDeleteTeam}>Delete</button>
+// ...
+```
+- 수정된 데이터를 다시 로드
+```javascript
+// ...
+let refetchTeams
+// ...
+refetchTeams = refetch
+// ...
+alert(`${data.deleteTeam.id} 항목이 삭제되었습니다.`)
+refetchTeams()
+// ...
+```    
+###### 항목 수정하기
+- 쿼리와 함수 작성: ``teams.js``
+```javascript
+// ...
+const EDIT_TEAM = gql`
+  mutation EditTeam($id: ID!, $input: PostTeamInput!) {
+    editTeam(id: $id, input: $input) {
+      id,
+      manager,
+      office,
+      extension_number,
+      mascot,
+      cleaning_duty,
+      project
+    }
+  }
+`
+// ...
+  function execEditTeam () {
+    editTeam({
+      variables: {  
+        id: contentId,
+        input: inputs }
+      })
+  }
+  const [editTeam] = useMutation(
+    EDIT_TEAM, { onCompleted: editTeamCompleted }) 
+  function editTeamCompleted (data) {
+    console.log(data.editTeam)
+    alert(`${data.editTeam.id} 항목이 수정되었습니다.`)
+    refetchTeams()
+  }
+```
+- 버튼에 적용: ``teams.js``
+```javascript
+//   ...
+    <button onClick={execEditTeam}>Modify</button>
+//   ...
+```
+###### 항목 추가하기
+- 쿼리와 함수 작성: ``teams.js``
+```javascript
+// ...
+const POST_TEAM = gql`
+  mutation PostTeam($input: PostTeamInput!) {
+    postTeam(input: $input) {
+      id
+      manager
+      office
+      extension_number
+      mascot
+      cleaning_duty
+      project
+    }
+  }
+`
+// ...
+  function execPostTeam () {
+    postTeam({
+      variables: { input: inputs }})
+  }
+
+  const [postTeam] = useMutation(
+    POST_TEAM, { onCompleted: postTeamCompleted }) 
+
+  function postTeamCompleted (data) {
+    console.log(data.postTeam)
+    alert(`${data.postTeam.id} 항목이 생성되었습니다.`)
+    refetchTeams()
+    setContentId(0)
+  }
+```
+- 버튼에 적용: ``teams.js``
+```javascript
+//   ...
+    <button onClick={execPostTeam}>Submit</button>
+// ...
+```
+##### Fragment 사용하기
+- 4-3-fragment 폴더에서 people.js 가져오기
+  - components 폴더로 복사
+
+- [GraphQL의 Fragment](https://graphql-kr.github.io/learn/queries/)
+  - 여러 쿼리에 사용될 수 있는, 재사용 가능한 필드셋
+  - 중복을 줄임으로써 전체 코드를 간소화
+- 재사용되는 요소들 fragment로 분리: ``people.js``
+```javascript
+const Names = gql`
+  fragment names on People {
+    first_name
+    last_name
+  }
+`
+const HealthInfo = gql`
+  fragment healthInfo on People {
+    sex
+    blood_type
+  }
+`
+const WorkInfo = gql`
+  fragment workInfo on People {
+    serve_years
+    role
+    team
+    from
+  }
+`
+```
+- 쿼리들에 적용
+```javascript
+const GET_PEOPLE = gql`
+  query GetPeople {
+  people {
+    id
+    ...names
+    ...healthInfo
+    }
+  }
+  ${Names}
+  ${HealthInfo}
+`;
+
+const GET_PERSON = gql`
+  query GetPerson($id: ID!) {
+    person(id: $id) {
+      id
+      ...names
+      ...healthInfo
+      ...workInfo
+      tools {
+        __typename
+        ... on Software {
+          id
+        }
+        ... on Equipment {
+          id
+          count
+        }
+      }
+    }
+  }
+  ${Names}
+  ${HealthInfo}
+  ${WorkInfo}
+`;
+```
