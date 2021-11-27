@@ -7,7 +7,7 @@
     "test": "test",
     "start": "nodemon index.js"
   },
-  "author": "gusami",
+  "author": "yalco",
   "license": "ISC",
   "dependencies": {
     "apollo-server": "^3.5.0",

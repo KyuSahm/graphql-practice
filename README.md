@@ -1224,6 +1224,317 @@ const typeDefs = gql`
   }
 `
 ```
+### 유니언과 인터페이스
+- 3-3-union-interface 새로 열기
+#### Union
+- 여러 타입의 결과값을 한 배열에 반환하고자 할 때 사용
+##### Equipment와 Supply를 함께 반환하기
+- ``givens.js``
+  - ``return``에 Equipment 배열과 Supply 배열을 합친 새로운 배열 생성 (Spread 연산자)
+```javascript
+const { gql } = require('apollo-server')
+const dbWorks = require('../dbWorks.js')
+const typeDefs = gql`
+    union Given = Equipment | Supply
+`
+const resolvers = {
+    Query: {
+        givens: (parent, args) => {
+            return [
+                ...dbWorks.getEquipments(args),
+                ...dbWorks.getSupplies(args)
+            ]
+        }
+    },
+    Given: {
+        __resolveType(given, context, info) {
+            if (given.used_by) {
+                return 'Equipment'
+            }
+            if (given.team) {
+                return 'Supply'
+            }
+            return null
+        }
+    }
+}
+module.exports = {
+    typeDefs: typeDefs,
+    resolvers: resolvers
+}
+```
+- ``_queries.js``
+```javascript
+const typeDefs = gql`
+    type Query {
+        // ...
+        givens: [Given]
+    }
+`
+```
+- ``index.js``
+```javascript
+// ...
+const givens = require('./typedefs-resolvers/givens')
+// ...
+const typeDefs = [
+    // ...
+    givens.typeDefs
+]
+// ...
+const resolvers = [
+    // ...
+    givens.resolvers
+]
+// ...
+```
+- Apollo playground에서 아래의 쿼리 수행
+```javascript
+query {
+  givens {
+    __typename
+    ... on Equipment {
+      id
+      used_by
+      count
+      new_or_used
+    }
+    ... on Supply {
+      id
+      team
+    }
+  }
+}
+```
+- 쿼리 수행 결과
+```javascript
+{
+  "data": {
+    "givens": [
+      ....
+      {
+        "__typename": "Equipment",
+        "id": "whiteboard",
+        "used_by": "planner",
+        "count": 12,
+        "new_or_used": "used"
+      },
+      {
+        "__typename": "Equipment",
+        "id": "sketchboard",
+        "used_by": "designer",
+        "count": 48,
+        "new_or_used": "new"
+      },
+      {
+        "__typename": "Supply",
+        "id": "ergonomic mouse",
+        "team": 1
+      },
+      {
+        "__typename": "Supply",
+        "id": "mug",
+        "team": 1
+      },
+      ....
+    ]
+  }
+}
+```
+#### interface
+- 유사한 객체 타입을 만들기 위한 공통 필드 타입
+- 추상 타입
+  - 다른 타입에 ``implement`` 되기 위한 타입
+  - 공통적으로 가진 필드: ``id, used_by``
+```javascript
+type Equipment {
+    id: ID!
+    used_by: Role!
+    count: Int
+    new_or_used: NewOrUsed!
+}
+...
+type Software {
+    id: ID!
+    used_by: Role!
+    developed_by: String!
+    description: String
+}
+```  
+- ``tools.js``
+```javascript
+const { gql } = require('apollo-server')
+const typeDefs = gql`
+    interface Tool {
+        id: ID!
+        used_by: Role!
+    }
+`
+const resolvers = {
+    Tool: {
+        __resolveType(tool, context, info) {
+            if (tool.developed_by) {
+                return 'Software'
+            }
+            if (tool.new_or_used) {
+                return 'Equipment'
+            }
+            return null
+        }
+    }
+}
+module.exports = {
+    typeDefs: typeDefs,
+    resolvers: resolvers
+}
+```
+- ``equipments.js``
+```javascript
+type Equipment implements Tool {
+    id: ID!
+    used_by: Role!
+    count: Int
+    new_or_used: NewOrUsed!
+}
+```
+- ``software.js``
+```javascript
+type Software implements Tool {
+    id: ID!
+    used_by: Role!
+    developed_by: String!
+    description: String
+}
+```
+- ``index.js``
+```javascript
+// ...
+const tools = require('./typedefs-resolvers/tools')
+// ...
+const typeDefs = [
+    // ...
+    tools.typeDefs
+]
+// ...
+const resolvers = [
+    // ...
+    tools.resolvers
+]
+// ...
+```
+- ``Apollo Playground``에서 Query 수행
+```javascript
+query {
+  equipments {
+    id
+    used_by
+    count
+    new_or_used
+  }
+  softwares {
+    id
+    used_by
+    description
+    developed_by
+  }
+}
+```
+##### People 쿼리에 적용
+- ``people.js``
+```javascript
+const { gql } = require('apollo-server')
+const dbWorks = require('../dbWorks.js')
+const typeDefs = gql`
+    type People {
+        id: ID!
+        first_name: String!
+        last_name: String!
+        sex: Sex!
+        blood_type: BloodType!
+        serve_years: Int!
+        role: Role!
+        team: ID!
+        from: String!
+        tools: [Tool]
+        givens: [Given]
+    }
+`
+const resolvers = {
+    Query: {
+        people: (parent, args) => dbWorks.getPeople(args),
+        person: (parent, args) => dbWorks.getPeople(args)[0]
+    }
+}
+module.exports = {
+    typeDefs: typeDefs,
+    resolvers: resolvers
+}
+```
+- ``_queries.js``
+```javascript
+const typeDefs = gql`
+    type Query {
+        people: [People],
+        // ...
+    }
+`
+```
+- ``index.js``
+```javascript
+// ...
+const people = require('./typedefs-resolvers/people')
+// ...
+const typeDefs = [
+    // ...
+    people.typeDefs
+]
+// ...
+const resolvers = [
+    // ...
+    people.resolvers
+]
+// ...
+```
+- ``Apollo Playground`` Query 수행
+```javascript
+query {
+  people {
+    id
+    first_name
+    last_name
+    givens {
+        __typename
+    	... on Equipment {
+      	id
+      	used_by
+      	count
+      	new_or_used
+    	}
+    	... on Supply {
+      	id
+      	team
+    	}
+  	}
+    tools {
+      __typename
+      ... on Equipment {
+        id
+        used_by
+        count
+        new_or_used
+      }
+      ... on Software {
+        id
+        used_by
+        description
+        developed_by
+      }
+    }
+  }
+}
+```
+
+
 ### GraphQL로 정보를 주고받는 방법
 ## Apollo를 사용한 GraphQL 프로그래밍 실습
 ### Node.js 기반 프로젝트
